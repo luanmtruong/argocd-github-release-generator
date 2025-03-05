@@ -55,6 +55,8 @@ spec:
             secretKeyRef:
               key: plugin.argocd-github-release-generator.github_pat
               name: argocd-github-release-generator
+        - name: LOG_LEVEL
+          value: "DEBUG"
         image: ghcr.io/luanmtruong/argocd-github-release-generator:v0.0.6-filter
         imagePullPolicy: IfNotPresent
         name: argocd-github-release-generator
