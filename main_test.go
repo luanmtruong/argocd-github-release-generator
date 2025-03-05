@@ -142,6 +142,25 @@ func TestGetFilteredReleases(t *testing.T) {
 				{Name: "v1.0.1", NameSlug: "v1-0-1"},
 			},
 		},
+		{
+			name: "filter out pre-releases",
+			params: Parameters{
+				MinRelease: "v0.0.0",
+			},
+			releases: []Release{
+				{Name: "v0.17.0-llm.1"},
+				{Name: "v0.17.0-llm.2"},
+				{Name: "v0.17.0"},
+				{Name: "v0.18.0-alpha"},
+				{Name: "v0.18.0"},
+				{Name: "v1.0.0"},
+			},
+			expectedReleases: []Release{
+				{Name: "v0.17.0", NameSlug: "v0-17-0", TagSlug: "v0-17-0"},
+				{Name: "v0.18.0", NameSlug: "v0-18-0", TagSlug: "v0-18-0"},
+				{Name: "v1.0.0", NameSlug: "v1-0-0", TagSlug: "v1-0-0"},
+			},
+		},
 	}
 
 	for _, test := range cases {

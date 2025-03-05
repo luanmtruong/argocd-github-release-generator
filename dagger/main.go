@@ -2,14 +2,22 @@ package main
 
 import (
 	"context"
+	"dagger/ci/internal/dagger"
 )
 
 type Ci struct{}
 
-func (m *Ci) BaseContainer(ctx context.Context, src *Directory) *Container {
+func (m *Ci) BaseContainer(
+	ctx context.Context,
+	src *dagger.Directory,
+	// Target platform in "[os]/[platform]/[version]" format (e.g., "darwin/arm64/v7", "windows/amd64", "linux/arm64").
+	// +default="linux/amd64"
+	// +optional
+	platform dagger.Platform,
+) *dagger.Container {
 	goModCache := dag.CacheVolume("gomod")
 	goBuildCache := dag.CacheVolume("gobuild")
-	server := dag.Container().
+	server := dag.Container(dagger.ContainerOpts{Platform: platform}).
 		From("golang:1.21-alpine").
 		WithMountedCache("/go/pkg/mod", goModCache).
 		WithMountedCache("/root/.cache/go-build", goBuildCache).

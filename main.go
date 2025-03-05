@@ -167,6 +167,14 @@ type Commit struct {
 }
 
 func getFilteredReleases(releases []Release, params Parameters) ([]Release, error) {
+	// First, filter out pre-release versions
+	var releasesWithoutPreReleases []Release
+	for _, r := range releases {
+		if !isPreRelease(r.Name) {
+			releasesWithoutPreReleases = append(releasesWithoutPreReleases, r)
+		}
+	}
+
 	// Sort releases in a descending order so that returning only the latest patch
 	// of a minor or latest minor of a major version can be done simply with a map
 	sort.SliceStable(releases, func(i, j int) bool {
@@ -254,4 +262,20 @@ func getReleases(ctx context.Context, repo string) ([]Release, error) {
 	}
 
 	return releases, nil
+}
+
+// isPreRelease checks if a version string is a pre-release
+// Pre-releases have a hyphen after the version number followed by an identifier
+// Examples: v0.17.0-llm.1, 0.17.0-llm.2, 0.17.0-llm.3
+func isPreRelease(version string) bool {
+	// Find first position of hyphen after the main version numbers
+	parts := strings.SplitN(version, "-", 2)
+
+	// If there's no hyphen or it's at the beginning (not a proper version), it's not a pre-release
+	if len(parts) < 2 || parts[0] == "" {
+		return false
+	}
+
+	// If there's a hyphen with something after it, it's a pre-release
+	return true
 }
