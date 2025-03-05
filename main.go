@@ -166,31 +166,61 @@ type Commit struct {
 	URL string `json:"url"`
 }
 
+func getReleases(ctx context.Context, repo string) ([]Release, error) {
+	l := log.Ctx(ctx)
+
+	rr, err := http.NewRequest(http.MethodGet, "https://api.github.com/repos/"+repo+"/tags", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if githubPat != "" {
+		rr.Header.Set("Authorization", "Bearer "+githubPat)
+	}
+
+	res, err := http.DefaultClient.Do(rr)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		l.Error().Int("github_status_code", res.StatusCode).Msg("failed to fetch releases")
+		return nil, fmt.Errorf("failed to fetch releases, github responded with: %d", res.StatusCode)
+	}
+
+	var releases []Release
+	if err := json.NewDecoder(res.Body).Decode(&releases); err != nil {
+		return nil, err
+	}
+
+	return releases, nil
+}
 func getFilteredReleases(releases []Release, params Parameters) ([]Release, error) {
-	// First, filter out pre-release versions
+	// Filter out pre-release versions
 	var releasesWithoutPreReleases []Release
 	for _, r := range releases {
-		if !isPreRelease(r.Name) {
+		if !strings.Contains(r.Name, "-") {
 			releasesWithoutPreReleases = append(releasesWithoutPreReleases, r)
 		}
 	}
 
-	// Sort releases in a descending order so that returning only the latest patch
-	// of a minor or latest minor of a major version can be done simply with a map
-	sort.SliceStable(releases, func(i, j int) bool {
-		return semver.Compare(releases[i].Name, releases[j].Name) > 0
+	// Sort releases in a descending order
+	sort.SliceStable(releasesWithoutPreReleases, func(i, j int) bool {
+		return semver.Compare(releasesWithoutPreReleases[i].Name, releasesWithoutPreReleases[j].Name) > 0
 	})
 
 	var (
 		filteredReleases []Release
 		latestVersion    = map[string]string{}
 	)
-	for _, r := range releases {
+
+	// Continue with the rest of the filtering logic
+	for _, r := range releasesWithoutPreReleases {
 		if semver.Compare(r.Name, params.MinRelease) < 0 {
 			continue
 		}
 
-		// if we reached the amount of releases we want to keep, break out of the loop
 		if params.KeepReleases != 0 && len(filteredReleases) == params.KeepReleases {
 			break
 		}
@@ -225,43 +255,12 @@ func getFilteredReleases(releases []Release, params Parameters) ([]Release, erro
 		filteredReleases = append(filteredReleases, r)
 	}
 
-	// sort the releases by increasing order before returning them
+	// Sort the filtered releases
 	sort.SliceStable(filteredReleases, func(i, j int) bool {
 		return semver.Compare(filteredReleases[i].Name, filteredReleases[j].Name) < 0
 	})
 
 	return filteredReleases, nil
-}
-
-func getReleases(ctx context.Context, repo string) ([]Release, error) {
-	l := log.Ctx(ctx)
-
-	rr, err := http.NewRequest(http.MethodGet, "https://api.github.com/repos/"+repo+"/tags", nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if githubPat != "" {
-		rr.Header.Set("Authorization", "Bearer "+githubPat)
-	}
-
-	res, err := http.DefaultClient.Do(rr)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusOK {
-		l.Error().Int("github_status_code", res.StatusCode).Msg("failed to fetch releases")
-		return nil, fmt.Errorf("failed to fetch releases, github responded with: %d", res.StatusCode)
-	}
-
-	var releases []Release
-	if err := json.NewDecoder(res.Body).Decode(&releases); err != nil {
-		return nil, err
-	}
-
-	return releases, nil
 }
 
 // isPreRelease checks if a version string is a pre-release
