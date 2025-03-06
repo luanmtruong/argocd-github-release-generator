@@ -262,19 +262,3 @@ func getFilteredReleases(releases []Release, params Parameters) ([]Release, erro
 
 	return filteredReleases, nil
 }
-
-// isPreRelease checks if a version string is a pre-release
-// Pre-releases have a hyphen after the version number followed by an identifier
-// Examples: v0.17.0-llm.1, 0.17.0-llm.2, 0.17.0-llm.3
-func isPreRelease(version string) bool {
-	// Find first position of hyphen after the main version numbers
-	parts := strings.SplitN(version, "-", 2)
-
-	// If there's no hyphen or it's at the beginning (not a proper version), it's not a pre-release
-	if len(parts) < 2 || parts[0] == "" {
-		return false
-	}
-
-	// If there's a hyphen with something after it, it's a pre-release
-	return true
-}
